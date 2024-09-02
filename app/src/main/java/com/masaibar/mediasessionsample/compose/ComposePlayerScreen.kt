@@ -64,32 +64,14 @@ fun VideoPlayer(
         mutableStateOf<MediaController?>(null)
     }
 
-    LaunchedEffect(mediaItem) {
-        if (mediaItem != null) {
-            if (mediaController == null) {
-                val sessionToken =
-                    SessionToken(context, ComponentName(context, PlayerService::class.java))
-                mediaController = MediaController.Builder(context, sessionToken)
-                    .buildAsync()
-                    .await()
-
-                mediaController?.addListener(object : Player.Listener {
-                    override fun onPlayWhenReadyChanged(playWhenReady: Boolean, reason: Int) {
-                        // do nothing
-                    }
-
-                    override fun onVideoSizeChanged(videoSize: VideoSize) {
-                        // do nothing
-                    }
-                })
-
-                playerView.player = mediaController
-                mediaController?.playWhenReady = true
-                mediaController?.prepare()
-            }
-            if (mediaController?.currentMediaItem != mediaItem) {
-                mediaController?.setMediaItem(mediaItem)
-            }
+    LaunchedEffect(Unit) {
+        if (mediaController == null) {
+            val sessionToken =
+                SessionToken(context, ComponentName(context, PlayerService::class.java))
+            mediaController = MediaController.Builder(context, sessionToken)
+                .buildAsync()
+                .await()
+            playerView.player = mediaController
         }
     }
 
