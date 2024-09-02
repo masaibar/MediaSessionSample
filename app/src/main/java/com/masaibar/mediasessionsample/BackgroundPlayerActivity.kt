@@ -22,7 +22,6 @@ class BackgroundPlayerActivity : AppCompatActivity() {
     private val binding: ActivityPlayerBinding by lazy {
         ActivityPlayerBinding.inflate(layoutInflater)
     }
-//    private lateinit var controllerFuture: ListenableFuture<MediaController>
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -41,22 +40,10 @@ class BackgroundPlayerActivity : AppCompatActivity() {
                 sessionToken
             ).buildAsync().await()
             binding.playerView.player = mediaController
-
         }
-//        controllerFuture = MediaController.Builder(this, sessionToken).buildAsync()
-//        controllerFuture.addListener(
-//            {
-//                if (controllerFuture.isDone) {
-//                    val mediaController = controllerFuture.get()
-//                    binding.playerView.player = mediaController
-//                }
-//            },
-//            MoreExecutors.directExecutor()
-//        )
     }
 
     override fun onStop() {
-//        MediaController.releaseFuture(controllerFuture)
         binding.playerView.player = null
         super.onStop()
     }
