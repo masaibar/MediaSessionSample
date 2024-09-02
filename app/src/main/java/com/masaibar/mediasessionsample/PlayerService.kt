@@ -5,6 +5,9 @@ import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.session.MediaSession
 import androidx.media3.session.MediaSessionService
 
+/**
+ * Ref: https://developer.android.com/media/media3/session/background-playback?hl=ja
+ */
 class PlayerService : MediaSessionService() {
     private var mediaSession: MediaSession? = null
 

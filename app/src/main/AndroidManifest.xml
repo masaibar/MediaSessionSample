@@ -16,6 +16,12 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.MediaSessionSample"
         tools:targetApi="31">
+
+        <activity
+            android:theme="@style/Theme.AppCompat.NoActionBar"
+            android:name=".PlayerActivity"
+            android:exported="false" />
+
         <activity
             android:name=".MainActivity"
             android:exported="true"
@@ -29,7 +35,7 @@
         </activity>
 
         <service
-            android:name="com.masaibar.mediasessionsample.PlayerService"
+            android:name=".PlayerService"
             android:exported="false"
             android:foregroundServiceType="mediaPlayback">
             <intent-filter>
