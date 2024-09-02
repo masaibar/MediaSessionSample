@@ -39,6 +39,9 @@ android {
     buildFeatures {
         compose = true
     }
+    viewBinding {
+        enable = true
+    }
     composeOptions {
         kotlinCompilerExtensionVersion = "1.5.1"
     }
@@ -66,6 +69,7 @@ dependencies {
     implementation(libs.androidx.media3.exoplayer)
     implementation(libs.androidx.media3.hls)
     implementation(libs.androidx.media3.session)
+    implementation(libs.androidx.media3.ui)
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
