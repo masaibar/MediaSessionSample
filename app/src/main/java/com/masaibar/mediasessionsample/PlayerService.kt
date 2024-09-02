@@ -1,27 +1,32 @@
 package com.masaibar.mediasessionsample
 
+import android.app.PendingIntent
+import android.app.PendingIntent.FLAG_IMMUTABLE
 import android.content.Intent
 import androidx.annotation.OptIn
 import androidx.media3.common.MediaItem
-import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.session.MediaSession
+import androidx.media3.session.MediaSession.ControllerInfo
 import androidx.media3.session.MediaSessionService
 import com.google.common.util.concurrent.Futures
 import com.google.common.util.concurrent.ListenableFuture
+import com.masaibar.mediasessionsample.compose.BackgroundComposePlayerActivity
 
 /**
  * Ref: https://developer.android.com/media/media3/session/background-playback?hl=ja
  */
 @OptIn(UnstableApi::class)
-class PlayerService : MediaSessionService(), Player.Listener {
+class PlayerService : MediaSessionService() {
+
     private lateinit var player: ExoPlayer
     private lateinit var mediaSession: MediaSession
+
     private val mediaSessionCallback = object : MediaSession.Callback {
         override fun onAddMediaItems(
             mediaSession: MediaSession,
-            controller: MediaSession.ControllerInfo,
+            controller: ControllerInfo,
             mediaItems: MutableList<MediaItem>
         ): ListenableFuture<MutableList<MediaItem>> =
             Futures.immediateFuture(mediaItems.map { mediaItem ->
@@ -38,16 +43,21 @@ class PlayerService : MediaSessionService(), Player.Listener {
             setHandleAudioBecomingNoisy(true)
         }.build()
 
-        player.addListener(this)
+        val pendingIntent = PendingIntent.getActivity(
+            this,
+            0,
+            BackgroundComposePlayerActivity.createIntent(this),
+            FLAG_IMMUTABLE
+        )
+
         mediaSession = MediaSession.Builder(this, player)
-            .setCallback(mediaSessionCallback).build()
+            .setCallback(mediaSessionCallback)
+            .setSessionActivity(pendingIntent)
+            .build()
     }
 
     override fun onDestroy() {
-        player.apply {
-            removeListener(this@PlayerService)
-            release()
-        }
+        player.release()
         mediaSession.release()
         super.onDestroy()
     }
@@ -58,6 +68,6 @@ class PlayerService : MediaSessionService(), Player.Listener {
         stopSelf()
     }
 
-    override fun onGetSession(controllerInfo: MediaSession.ControllerInfo): MediaSession =
+    override fun onGetSession(controllerInfo: ControllerInfo): MediaSession =
         mediaSession
 }

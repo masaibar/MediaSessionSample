@@ -56,6 +56,7 @@ dependencies {
 
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
+    implementation(libs.androidx.lifecycle.runtime.compose)
     implementation(libs.androidx.activity.compose)
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.ui)
@@ -70,7 +71,7 @@ dependencies {
     implementation(libs.androidx.media3.hls)
     implementation(libs.androidx.media3.session)
     implementation(libs.androidx.media3.ui)
-    implementation(libs.kotlinx.coroutines.guava)
+    implementation(libs.androidx.concurrent.futures)
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
