@@ -18,7 +18,10 @@ import androidx.media3.session.MediaSessionService
 @OptIn(UnstableApi::class)
 class PlayerService : MediaSessionService(), Player.Listener {
     private val player: ExoPlayer by lazy {
-        ExoPlayer.Builder(this).build()
+        ExoPlayer.Builder(this).apply {
+            // イヤホンが外れたら再生停止
+            setHandleAudioBecomingNoisy(true)
+        }.build()
     }
     private var mediaSession: MediaSession? = null
 
@@ -59,9 +62,11 @@ class PlayerService : MediaSessionService(), Player.Listener {
         val mediaItem = MediaItem.Builder()
             .setUri(hlsUrl)
             .build()
-        val factory = DefaultHttpDataSource.Factory().also {
-            HlsMediaSource.Factory(it)
-        }
+        val factory = DefaultHttpDataSource.Factory()
+            .setConnectTimeoutMs(DefaultHttpDataSource.DEFAULT_CONNECT_TIMEOUT_MILLIS)
+            .setReadTimeoutMs(DefaultHttpDataSource.DEFAULT_READ_TIMEOUT_MILLIS).also {
+                HlsMediaSource.Factory(it)
+            }
         val mediaSource = DefaultMediaSourceFactory(factory).createMediaSource(mediaItem)
 
         player.setMediaSource(mediaSource)
