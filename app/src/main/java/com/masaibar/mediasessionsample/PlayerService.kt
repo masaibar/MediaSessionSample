@@ -14,6 +14,7 @@ import androidx.media3.session.MediaSession
 import androidx.media3.session.MediaSession.ControllerInfo
 import androidx.media3.session.MediaSessionService
 import com.masaibar.mediasessionsample.compose.BackgroundComposePlayerActivity
+import java.util.concurrent.atomic.AtomicBoolean
 
 /**
  * Ref: https://developer.android.com/media/media3/session/background-playback?hl=ja
@@ -37,9 +38,26 @@ class PlayerService : MediaSessionService() {
         )
     }
 
-    private val mediaSession by lazy {
+    private val isConnected: AtomicBoolean = AtomicBoolean(false)
+    private val mediaSessionCallback = object : MediaSession.Callback {
+        override fun onConnect(
+            session: MediaSession,
+            controller: ControllerInfo
+        ): MediaSession.ConnectionResult {
+            isConnected.set(true)
+            return super.onConnect(session, controller)
+        }
+
+        override fun onDisconnected(session: MediaSession, controller: ControllerInfo) {
+            isConnected.set(false)
+            super.onDisconnected(session, controller)
+        }
+    }
+
+    private val mediaSession: MediaSession by lazy {
         MediaSession.Builder(this, player)
             .setSessionActivity(pendingIntent)
+            .setCallback(mediaSessionCallback)
             .build()
     }
 
