@@ -5,6 +5,9 @@ import android.content.Context
 import android.content.Intent
 import android.os.Bundle
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.net.toUri
+import androidx.media3.common.MediaItem
+import androidx.media3.common.util.UnstableApi
 import androidx.media3.session.MediaController
 import androidx.media3.session.SessionToken
 import com.google.common.util.concurrent.ListenableFuture
@@ -22,7 +25,6 @@ class BackgroundPlayerActivity : AppCompatActivity() {
         ActivityPlayerBinding.inflate(layoutInflater)
     }
     private lateinit var controllerFuture: ListenableFuture<MediaController>
-    private lateinit var controller: MediaController
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -39,8 +41,9 @@ class BackgroundPlayerActivity : AppCompatActivity() {
         controllerFuture.addListener(
             {
                 if (controllerFuture.isDone) {
-                    controller = controllerFuture.get()
-                    binding.playerView.player = controller
+                    val mediaController = controllerFuture.get()
+                    binding.playerView.player = mediaController
+                    playStart(mediaController)
                 }
             },
             MoreExecutors.directExecutor()
@@ -52,4 +55,20 @@ class BackgroundPlayerActivity : AppCompatActivity() {
         binding.playerView.player = null
         super.onStop()
     }
+
+    @androidx.annotation.OptIn(UnstableApi::class)
+    private fun playStart(player: MediaController) {
+        val hlsUrl = "https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8"
+        val requestMetadata = MediaItem.RequestMetadata.Builder()
+            .setMediaUri(hlsUrl.toUri())
+            .build()
+        val mediaItem = MediaItem.Builder().setRequestMetadata(requestMetadata).build()
+
+        player.apply {
+            setMediaItem(mediaItem)
+            prepare()
+            play()
+        }
+    }
 }
+
