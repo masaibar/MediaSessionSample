@@ -33,8 +33,7 @@
             android:name=".BackgroundPlayerActivity"
             android:configChanges="keyboard|keyboardHidden|orientation|screenSize|screenLayout|smallestScreenSize|uiMode"
             android:exported="false"
-            android:launchMode="singleTop"
-            android:theme="@style/Theme.AppCompat.Light.NoActionBar" />
+            android:launchMode="singleTop" />
 
         <activity
             android:name=".compose.BackgroundComposePlayerActivity"

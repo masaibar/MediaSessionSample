@@ -19,9 +19,6 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.concurrent.futures.await
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.media3.common.MediaItem
-import androidx.media3.common.Player
-import androidx.media3.common.VideoSize
 import androidx.media3.session.MediaController
 import androidx.media3.session.SessionToken
 import androidx.media3.ui.PlayerView
@@ -37,52 +34,42 @@ fun ComposePlayerScreen(viewModel: ComposePlayerViewModel) {
 
 @Composable
 private fun ComposePlayerScreen(uiState: UiState) {
+    val context = LocalContext.current
     Box(
         modifier = Modifier
             .fillMaxSize()
             .systemBarsPadding()
     ) {
-        VideoPlayer(
-            mediaItem = uiState.mediaItem
-        )
-    }
-}
-
-@Composable
-fun VideoPlayer(
-    mediaItem: MediaItem?
-) {
-    val context = LocalContext.current
-
-    val playerView = remember {
-        PlayerView(context).apply {
-            useController = true
+        val playerView = remember {
+            PlayerView(context).apply {
+                useController = true
+            }
         }
-    }
 
-    var mediaController by remember {
-        mutableStateOf<MediaController?>(null)
-    }
-
-    LaunchedEffect(Unit) {
-        if (mediaController == null) {
-            val sessionToken =
-                SessionToken(context, ComponentName(context, PlayerService::class.java))
-            mediaController = MediaController.Builder(context, sessionToken)
-                .buildAsync()
-                .await()
-            playerView.player = mediaController
+        var mediaController by remember {
+            mutableStateOf<MediaController?>(null)
         }
-    }
 
-    DisposableEffect(
-        AndroidView(
-            factory = { playerView },
-            modifier = Modifier.background(Color.Black)
-        )
-    ) {
-        onDispose {
-            mediaController?.release()
+        LaunchedEffect(Unit) {
+            if (mediaController == null) {
+                val sessionToken =
+                    SessionToken(context, ComponentName(context, PlayerService::class.java))
+                mediaController = MediaController.Builder(context, sessionToken)
+                    .buildAsync()
+                    .await()
+                playerView.player = mediaController
+            }
+        }
+
+        DisposableEffect(
+            AndroidView(
+                factory = { playerView },
+                modifier = Modifier.background(Color.Black)
+            )
+        ) {
+            onDispose {
+                mediaController?.release()
+            }
         }
     }
 }
