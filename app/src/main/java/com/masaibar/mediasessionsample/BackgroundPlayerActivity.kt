@@ -43,7 +43,6 @@ class BackgroundPlayerActivity : AppCompatActivity() {
                 if (controllerFuture.isDone) {
                     val mediaController = controllerFuture.get()
                     binding.playerView.player = mediaController
-                    playStart(mediaController)
                 }
             },
             MoreExecutors.directExecutor()
@@ -54,21 +53,6 @@ class BackgroundPlayerActivity : AppCompatActivity() {
         MediaController.releaseFuture(controllerFuture)
         binding.playerView.player = null
         super.onStop()
-    }
-
-    @androidx.annotation.OptIn(UnstableApi::class)
-    private fun playStart(player: MediaController) {
-        val hlsUrl = "https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8"
-        val requestMetadata = MediaItem.RequestMetadata.Builder()
-            .setMediaUri(hlsUrl.toUri())
-            .build()
-        val mediaItem = MediaItem.Builder().setRequestMetadata(requestMetadata).build()
-
-        player.apply {
-            setMediaItem(mediaItem)
-            prepare()
-            play()
-        }
     }
 }
 
