@@ -49,6 +49,7 @@ class PlayerActivity : AppCompatActivity() {
 
     override fun onStop() {
         MediaController.releaseFuture(controllerFuture)
+        binding.playerView.player = null
         super.onStop()
     }
 }

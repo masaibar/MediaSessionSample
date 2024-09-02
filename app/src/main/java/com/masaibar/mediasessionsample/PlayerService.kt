@@ -69,8 +69,10 @@ class PlayerService : MediaSessionService(), Player.Listener {
             }
         val mediaSource = DefaultMediaSourceFactory(factory).createMediaSource(mediaItem)
 
-        player.setMediaSource(mediaSource)
-        player.prepare()
-        player.play()
+        player.apply {
+            setMediaSource(mediaSource)
+            prepare()
+            play()
+        }
     }
 }
