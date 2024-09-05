@@ -40,6 +40,9 @@ class BackgroundPlayerActivity : AppCompatActivity() {
                 sessionToken
             ).buildAsync().await()
             binding.playerView.player = mediaController
+
+            val hlsUrl = "https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8"
+            mediaController.prepareVideo(hlsUrl)
         }
     }
 

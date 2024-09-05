@@ -24,6 +24,7 @@ import androidx.media3.session.MediaController
 import androidx.media3.session.SessionToken
 import androidx.media3.ui.PlayerView
 import com.masaibar.mediasessionsample.PlayerService
+import com.masaibar.mediasessionsample.prepareVideo
 import com.masaibar.mediasessionsample.ui.theme.MediaSessionSampleTheme
 
 @Composable
@@ -59,6 +60,8 @@ private fun ComposePlayerScreen(uiState: UiState) {
                     .buildAsync()
                     .await()
                 playerView.player = mediaController
+                val hlsUrl = "https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8"
+                mediaController?.prepareVideo(hlsUrl)
             }
         }
 
