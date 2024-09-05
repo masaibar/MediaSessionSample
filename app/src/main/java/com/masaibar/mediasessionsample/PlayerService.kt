@@ -2,12 +2,18 @@ package com.masaibar.mediasessionsample
 
 import android.app.PendingIntent
 import android.app.PendingIntent.FLAG_IMMUTABLE
+import android.content.Context
 import android.content.Intent
 import android.os.Bundle
-import android.util.Log
+import android.os.IBinder
 import androidx.annotation.OptIn
 import androidx.concurrent.futures.await
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleOwner
+import androidx.lifecycle.ServiceLifecycleDispatcher
+import androidx.lifecycle.lifecycleScope
 import androidx.media3.common.MediaItem
+import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.datasource.DefaultHttpDataSource
 import androidx.media3.exoplayer.ExoPlayer
@@ -20,10 +26,12 @@ import androidx.media3.session.MediaSession.ConnectionResult.AcceptedResultBuild
 import androidx.media3.session.MediaSession.ControllerInfo
 import androidx.media3.session.MediaSessionService
 import androidx.media3.session.SessionCommand
+import androidx.media3.session.SessionError
 import androidx.media3.session.SessionResult
 import com.google.common.util.concurrent.Futures
 import com.google.common.util.concurrent.ListenableFuture
 import com.masaibar.mediasessionsample.compose.BackgroundComposePlayerActivity
+import kotlinx.coroutines.launch
 import java.util.concurrent.atomic.AtomicBoolean
 
 /**
@@ -32,17 +40,24 @@ import java.util.concurrent.atomic.AtomicBoolean
  * - https://zenn.dev/tomoya0x00/articles/ec7a3b07ea7d0a
  */
 @OptIn(UnstableApi::class)
-class PlayerService : MediaSessionService() {
+class PlayerService : MediaSessionService(), LifecycleOwner, Player.Listener {
 
     companion object {
-        const val CUSTOM_SESSION_ACTION_PREPARE_VIDEO = "custom_session_action_prepare_video"
+        const val CUSTOM_ACTION_PREPARE_VIDEO = "action_prepare_video"
+        const val CUSTOM_EVENT_VIDEO_ENDED = "video_ended"
         const val KEY_HLS_URL = "hls_url"
     }
+
+    private val dispatcher = ServiceLifecycleDispatcher(this)
+    override val lifecycle: Lifecycle
+        get() = dispatcher.lifecycle
 
     private val player: ExoPlayer by lazy {
         ExoPlayer.Builder(this).apply {
             // イヤホンが外れたら再生停止
             setHandleAudioBecomingNoisy(true)
+            // 末尾まで再生したらpauseする
+            setPauseAtEndOfMediaItems(true)
         }.build()
     }
 
@@ -65,7 +80,7 @@ class PlayerService : MediaSessionService() {
             val sessionCommands = ConnectionResult.DEFAULT_SESSION_COMMANDS.buildUpon()
                 .add(
                     SessionCommand(
-                        CUSTOM_SESSION_ACTION_PREPARE_VIDEO,
+                        CUSTOM_ACTION_PREPARE_VIDEO,
                         Bundle.EMPTY
                     )
                 )
@@ -88,7 +103,7 @@ class PlayerService : MediaSessionService() {
             args: Bundle
         ): ListenableFuture<SessionResult> =
             when (customCommand.customAction) {
-                CUSTOM_SESSION_ACTION_PREPARE_VIDEO -> {
+                CUSTOM_ACTION_PREPARE_VIDEO -> {
                     customCommand.customExtras.getString(KEY_HLS_URL)?.let {
                         playStart(it)
                     }
@@ -109,10 +124,43 @@ class PlayerService : MediaSessionService() {
             .build()
     }
 
+    override fun onCreate() {
+        dispatcher.onServicePreSuperOnCreate()
+        player.addListener(this)
+        super.onCreate()
+    }
+
+    override fun onBind(intent: Intent?): IBinder? {
+        dispatcher.onServicePreSuperOnBind()
+        return super.onBind(intent)
+    }
+
+    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        dispatcher.onServicePreSuperOnStart()
+        return super.onStartCommand(intent, flags, startId)
+    }
+
     override fun onDestroy() {
-        player.release()
+        dispatcher.onServicePreSuperOnDestroy()
+        player.run {
+            release()
+            removeListener(this@PlayerService)
+        }
         mediaSession.release()
         super.onDestroy()
+    }
+
+    override fun onPlayWhenReadyChanged(playWhenReady: Boolean, reason: Int) {
+        super.onPlayWhenReadyChanged(playWhenReady, reason)
+
+        when (Pair(playWhenReady, reason)) {
+            Pair(false, Player.PLAY_WHEN_READY_CHANGE_REASON_END_OF_MEDIA_ITEM) -> {
+                lifecycleScope.launch {
+                    // setPauseAtEndOfMediaItemsとの合わせ技でビデオ再生終了を検知して通知する
+                    mediaSession.notifyVideoEnded(this@PlayerService)
+                }
+            }
+        }
     }
 
     override fun onTaskRemoved(rootIntent: Intent?) {
@@ -142,11 +190,40 @@ class PlayerService : MediaSessionService() {
 suspend fun MediaController.prepareVideo(hlsUrl: String) {
     sendCustomCommand(
         SessionCommand(
-            PlayerService.CUSTOM_SESSION_ACTION_PREPARE_VIDEO,
+            PlayerService.CUSTOM_ACTION_PREPARE_VIDEO,
             Bundle().apply {
                 putString(PlayerService.KEY_HLS_URL, hlsUrl)
             }
         ),
-        Bundle()
+        Bundle.EMPTY
+    ).await()
+}
+
+suspend fun MediaSession.notifyVideoEnded(
+    context: Context
+) {
+    sendCustomCommand(
+        context,
+        SessionCommand(
+            PlayerService.CUSTOM_EVENT_VIDEO_ENDED,
+            Bundle.EMPTY
+        )
+    )
+}
+
+@OptIn(UnstableApi::class)
+suspend fun MediaSession.sendCustomCommand(
+    context: Context,
+    command: SessionCommand
+): SessionResult {
+    val myPackageName = context.packageName
+    val controller = connectedControllers.firstOrNull {
+        it.packageName == myPackageName
+    } ?: return SessionResult(SessionError.ERROR_SESSION_DISCONNECTED)
+
+    return this.sendCustomCommand(
+        controller,
+        command,
+        Bundle.EMPTY
     ).await()
 }

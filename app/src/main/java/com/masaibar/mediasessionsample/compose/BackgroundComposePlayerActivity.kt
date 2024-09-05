@@ -24,7 +24,12 @@ class BackgroundComposePlayerActivity : AppCompatActivity() {
 
         setContent {
             MediaSessionSampleTheme {
-                ComposePlayerScreen(viewModel = viewModel)
+                ComposePlayerScreen(
+                    viewModel = viewModel,
+                    onVideoEnded = {
+                        finish()
+                    }
+                )
             }
         }
     }

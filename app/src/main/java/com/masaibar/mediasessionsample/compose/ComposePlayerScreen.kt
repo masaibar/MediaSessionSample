@@ -1,6 +1,8 @@
 package com.masaibar.mediasessionsample.compose
 
 import android.content.ComponentName
+import android.os.Bundle
+import androidx.annotation.OptIn
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
@@ -18,24 +20,37 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.viewinterop.AndroidView
+import androidx.concurrent.futures.SuspendToFutureAdapter
 import androidx.concurrent.futures.await
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.media3.common.util.UnstableApi
 import androidx.media3.session.MediaController
+import androidx.media3.session.SessionCommand
+import androidx.media3.session.SessionError
+import androidx.media3.session.SessionResult
 import androidx.media3.session.SessionToken
 import androidx.media3.ui.PlayerView
+import com.google.common.util.concurrent.ListenableFuture
 import com.masaibar.mediasessionsample.PlayerService
 import com.masaibar.mediasessionsample.prepareVideo
 import com.masaibar.mediasessionsample.ui.theme.MediaSessionSampleTheme
 
 @Composable
-fun ComposePlayerScreen(viewModel: ComposePlayerViewModel) {
+fun ComposePlayerScreen(
+    viewModel: ComposePlayerViewModel,
+    onVideoEnded: () -> Unit
+) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
 
-    ComposePlayerScreen(uiState)
+    ComposePlayerScreen(uiState, onVideoEnded)
 }
 
+@OptIn(UnstableApi::class)
 @Composable
-private fun ComposePlayerScreen(uiState: UiState) {
+private fun ComposePlayerScreen(
+    uiState: UiState,
+    onVideoEnded: () -> Unit
+) {
     val context = LocalContext.current
     Box(
         modifier = Modifier
@@ -56,9 +71,29 @@ private fun ComposePlayerScreen(uiState: UiState) {
             if (mediaController == null) {
                 val sessionToken =
                     SessionToken(context, ComponentName(context, PlayerService::class.java))
-                mediaController = MediaController.Builder(context, sessionToken)
-                    .buildAsync()
-                    .await()
+                mediaController = MediaController.Builder(
+                    context,
+                    sessionToken
+                ).setListener(
+                    object: MediaController.Listener {
+                        override fun onCustomCommand(
+                            controller: MediaController,
+                            command: SessionCommand,
+                            args: Bundle
+                        ): ListenableFuture<SessionResult> {
+                            return SuspendToFutureAdapter.launchFuture {
+                                when (command.customAction) {
+                                    PlayerService.CUSTOM_EVENT_VIDEO_ENDED -> {
+                                        onVideoEnded()
+                                        SessionResult(SessionResult.RESULT_SUCCESS)
+                                    }
+
+                                    else -> SessionResult(SessionError.ERROR_NOT_SUPPORTED)
+                                }
+                            }
+                        }
+                    }
+                ).buildAsync().await()
                 playerView.player = mediaController
                 val hlsUrl = "https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8"
                 mediaController?.prepareVideo(hlsUrl)
@@ -85,6 +120,9 @@ private fun ComposePlayerScreen(uiState: UiState) {
 @Composable
 private fun ComposePlayerScreenPreview() {
     MediaSessionSampleTheme {
-        ComposePlayerScreen(uiState = UiState())
+        ComposePlayerScreen(
+            uiState = UiState(),
+            onVideoEnded = {}
+        )
     }
 }
