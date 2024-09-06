@@ -19,7 +19,6 @@ import androidx.media3.datasource.DefaultHttpDataSource
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.hls.HlsMediaSource
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
-import androidx.media3.session.MediaController
 import androidx.media3.session.MediaSession
 import androidx.media3.session.MediaSession.ConnectionResult
 import androidx.media3.session.MediaSession.ConnectionResult.AcceptedResultBuilder
@@ -32,7 +31,6 @@ import com.google.common.util.concurrent.Futures
 import com.google.common.util.concurrent.ListenableFuture
 import com.masaibar.mediasessionsample.compose.BackgroundComposePlayerActivity
 import kotlinx.coroutines.launch
-import java.util.concurrent.atomic.AtomicBoolean
 
 /**
  * Ref
@@ -41,12 +39,6 @@ import java.util.concurrent.atomic.AtomicBoolean
  */
 @OptIn(UnstableApi::class)
 class PlayerService : MediaSessionService(), LifecycleOwner, Player.Listener {
-
-    companion object {
-        const val CUSTOM_ACTION_PREPARE_VIDEO = "action_prepare_video"
-        const val CUSTOM_EVENT_VIDEO_ENDED = "video_ended"
-        const val KEY_HLS_URL = "hls_url"
-    }
 
     private val dispatcher = ServiceLifecycleDispatcher(this)
     override val lifecycle: Lifecycle
@@ -70,19 +62,22 @@ class PlayerService : MediaSessionService(), LifecycleOwner, Player.Listener {
         )
     }
 
-    private val isConnected: AtomicBoolean = AtomicBoolean(false)
+    private var isForeground: Boolean = false
+
     private val mediaSessionCallback = object : MediaSession.Callback {
         override fun onConnect(
             session: MediaSession,
             controller: ControllerInfo
         ): ConnectionResult {
-            isConnected.set(true)
             val sessionCommands = ConnectionResult.DEFAULT_SESSION_COMMANDS.buildUpon()
-                .add(
-                    SessionCommand(
-                        CUSTOM_ACTION_PREPARE_VIDEO,
-                        Bundle.EMPTY
-                    )
+                .addSessionCommands(
+                    listOf(
+                        MediaControllerCommand.PlayHls.ACTION,
+                        MediaControllerCommand.EnteredInForeground.action,
+                        MediaControllerCommand.EnteredInBackground.action
+                    ).toMutableList().map {
+                        SessionCommand(it, Bundle.EMPTY)
+                    }
                 )
                 .build()
 
@@ -91,20 +86,15 @@ class PlayerService : MediaSessionService(), LifecycleOwner, Player.Listener {
                 .build()
         }
 
-        override fun onDisconnected(session: MediaSession, controller: ControllerInfo) {
-            isConnected.set(false)
-            super.onDisconnected(session, controller)
-        }
-
         override fun onCustomCommand(
             session: MediaSession,
             controller: ControllerInfo,
-            customCommand: SessionCommand,
+            command: SessionCommand,
             args: Bundle
         ): ListenableFuture<SessionResult> =
-            when (customCommand.customAction) {
-                CUSTOM_ACTION_PREPARE_VIDEO -> {
-                    customCommand.customExtras.getString(KEY_HLS_URL)?.let {
+            when (command.customAction) {
+                MediaControllerCommand.PlayHls.ACTION -> {
+                    command.customExtras.getString(MediaControllerCommand.PlayHls.KEY_URL)?.let {
                         playStart(it)
                     }
                     Futures.immediateFuture(
@@ -112,7 +102,21 @@ class PlayerService : MediaSessionService(), LifecycleOwner, Player.Listener {
                     )
                 }
 
-                else -> super.onCustomCommand(session, controller, customCommand, args)
+                MediaControllerCommand.EnteredInForeground.action -> {
+                    isForeground = true
+                    Futures.immediateFuture(
+                        SessionResult(SessionResult.RESULT_SUCCESS)
+                    )
+                }
+
+                MediaControllerCommand.EnteredInBackground.action -> {
+                    isForeground = false
+                    Futures.immediateFuture(
+                        SessionResult(SessionResult.RESULT_SUCCESS)
+                    )
+                }
+
+                else -> super.onCustomCommand(session, controller, command, args)
             }
 
     }
@@ -157,7 +161,10 @@ class PlayerService : MediaSessionService(), LifecycleOwner, Player.Listener {
             Pair(false, Player.PLAY_WHEN_READY_CHANGE_REASON_END_OF_MEDIA_ITEM) -> {
                 lifecycleScope.launch {
                     // setPauseAtEndOfMediaItemsとの合わせ技でビデオ再生終了を検知して通知する
-                    mediaSession.notifyVideoEnded(this@PlayerService)
+                    mediaSession.notify(
+                        this@PlayerService,
+                        MediaSessionCommand.OnVideoEnded
+                    )
                 }
             }
         }
@@ -185,45 +192,4 @@ class PlayerService : MediaSessionService(), LifecycleOwner, Player.Listener {
         player.prepare()
         player.play()
     }
-}
-
-suspend fun MediaController.prepareVideo(hlsUrl: String) {
-    sendCustomCommand(
-        SessionCommand(
-            PlayerService.CUSTOM_ACTION_PREPARE_VIDEO,
-            Bundle().apply {
-                putString(PlayerService.KEY_HLS_URL, hlsUrl)
-            }
-        ),
-        Bundle.EMPTY
-    ).await()
-}
-
-suspend fun MediaSession.notifyVideoEnded(
-    context: Context
-) {
-    sendCustomCommand(
-        context,
-        SessionCommand(
-            PlayerService.CUSTOM_EVENT_VIDEO_ENDED,
-            Bundle.EMPTY
-        )
-    )
-}
-
-@OptIn(UnstableApi::class)
-suspend fun MediaSession.sendCustomCommand(
-    context: Context,
-    command: SessionCommand
-): SessionResult {
-    val myPackageName = context.packageName
-    val controller = connectedControllers.firstOrNull {
-        it.packageName == myPackageName
-    } ?: return SessionResult(SessionError.ERROR_SESSION_DISCONNECTED)
-
-    return this.sendCustomCommand(
-        controller,
-        command,
-        Bundle.EMPTY
-    ).await()
 }

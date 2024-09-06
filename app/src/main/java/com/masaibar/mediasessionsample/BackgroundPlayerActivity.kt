@@ -30,6 +30,8 @@ class BackgroundPlayerActivity : AppCompatActivity(), MediaController.Listener {
         ActivityPlayerBinding.inflate(layoutInflater)
     }
 
+    private lateinit var mediaController: MediaController
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(binding.root)
@@ -42,38 +44,32 @@ class BackgroundPlayerActivity : AppCompatActivity(), MediaController.Listener {
             ComponentName(this, PlayerService::class.java)
         )
         lifecycleScope.launch {
-            val mediaController = MediaController.Builder(
+            mediaController = MediaController.Builder(
                 this@BackgroundPlayerActivity,
                 sessionToken
             ).setListener(
                 this@BackgroundPlayerActivity
             ).buildAsync().await()
+            mediaController.notify(
+                MediaControllerCommand.EnteredInForeground
+            )
             binding.playerView.player = mediaController
 
             val hlsUrl = "https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8"
-            mediaController.prepareVideo(hlsUrl)
+            mediaController.notify(
+                MediaControllerCommand.PlayHls(hlsUrl)
+            )
         }
     }
 
     override fun onStop() {
+        lifecycleScope.launch {
+            mediaController.notify(
+                MediaControllerCommand.EnteredInBackground
+            )
+        }
         binding.playerView.player = null
         super.onStop()
-    }
-
-    @OptIn(UnstableApi::class)
-    override fun onCustomCommand(
-        controller: MediaController,
-        command: SessionCommand,
-        args: Bundle
-    ): ListenableFuture<SessionResult> = SuspendToFutureAdapter.launchFuture {
-        return@launchFuture when (command.customAction) {
-            PlayerService.CUSTOM_EVENT_VIDEO_ENDED -> {
-                finish()
-                SessionResult(SessionResult.RESULT_SUCCESS)
-            }
-
-            else -> SessionResult(SessionError.ERROR_NOT_SUPPORTED)
-        }
     }
 }
 

@@ -31,8 +31,10 @@ import androidx.media3.session.SessionResult
 import androidx.media3.session.SessionToken
 import androidx.media3.ui.PlayerView
 import com.google.common.util.concurrent.ListenableFuture
+import com.masaibar.mediasessionsample.MediaControllerCommand
+import com.masaibar.mediasessionsample.MediaSessionCommand
 import com.masaibar.mediasessionsample.PlayerService
-import com.masaibar.mediasessionsample.prepareVideo
+import com.masaibar.mediasessionsample.notify
 import com.masaibar.mediasessionsample.ui.theme.MediaSessionSampleTheme
 
 @Composable
@@ -83,7 +85,7 @@ private fun ComposePlayerScreen(
                         ): ListenableFuture<SessionResult> {
                             return SuspendToFutureAdapter.launchFuture {
                                 when (command.customAction) {
-                                    PlayerService.CUSTOM_EVENT_VIDEO_ENDED -> {
+                                    MediaSessionCommand.OnVideoEnded.action -> {
                                         onVideoEnded()
                                         SessionResult(SessionResult.RESULT_SUCCESS)
                                     }
@@ -96,7 +98,9 @@ private fun ComposePlayerScreen(
                 ).buildAsync().await()
                 playerView.player = mediaController
                 val hlsUrl = "https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8"
-                mediaController?.prepareVideo(hlsUrl)
+                mediaController?.notify(
+                    MediaControllerCommand.PlayHls(hlsUrl)
+                )
             }
         }
 
