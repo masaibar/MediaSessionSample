@@ -77,7 +77,7 @@ private fun ComposePlayerScreen(
                     context,
                     sessionToken
                 ).setListener(
-                    object: MediaController.Listener {
+                    object : MediaController.Listener {
                         override fun onCustomCommand(
                             controller: MediaController,
                             command: SessionCommand,

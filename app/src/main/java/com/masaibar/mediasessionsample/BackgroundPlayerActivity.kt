@@ -4,18 +4,11 @@ import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.os.Bundle
-import androidx.annotation.OptIn
 import androidx.appcompat.app.AppCompatActivity
-import androidx.concurrent.futures.SuspendToFutureAdapter
 import androidx.concurrent.futures.await
 import androidx.lifecycle.lifecycleScope
-import androidx.media3.common.util.UnstableApi
 import androidx.media3.session.MediaController
-import androidx.media3.session.SessionCommand
-import androidx.media3.session.SessionError
-import androidx.media3.session.SessionResult
 import androidx.media3.session.SessionToken
-import com.google.common.util.concurrent.ListenableFuture
 import com.masaibar.mediasessionsample.databinding.ActivityPlayerBinding
 import kotlinx.coroutines.launch
 
@@ -67,6 +60,7 @@ class BackgroundPlayerActivity : AppCompatActivity(), MediaController.Listener {
             mediaController.notify(
                 MediaControllerCommand.EnteredInBackground
             )
+            mediaController.release()
         }
         binding.playerView.player = null
         super.onStop()
