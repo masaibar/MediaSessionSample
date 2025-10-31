@@ -16,6 +16,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.media3.common.util.UnstableApi
 import com.masaibar.mediasessionsample.compose.BackgroundComposePlayerActivity
+import com.masaibar.mediasessionsample.compose.NewComposePlayerActivity
 import com.masaibar.mediasessionsample.ui.theme.MediaSessionSampleTheme
 
 class MainActivity : ComponentActivity() {
@@ -56,6 +57,19 @@ class MainActivity : ComponentActivity() {
                             }
                         ) {
                             Text("Open Background Compose Player")
+                        }
+                        Button(
+                            onClick = {
+                                NewComposePlayerActivity.createIntent(this@MainActivity)
+                                    .apply {
+                                        flags =
+                                            Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+                                    }.let {
+                                    startActivity(it)
+                                }
+                            }
+                        ) {
+                            Text("Open New Compose Player (Native)")
                         }
                         Button(
                             onClick = {
