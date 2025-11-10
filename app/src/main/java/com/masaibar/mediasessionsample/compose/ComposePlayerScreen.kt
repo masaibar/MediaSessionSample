@@ -62,6 +62,7 @@ private fun ComposePlayerScreen(
         val playerView = remember {
             PlayerView(context).apply {
                 useController = true
+                setEnableComposeSurfaceSyncWorkaround(true)
             }
         }
 
